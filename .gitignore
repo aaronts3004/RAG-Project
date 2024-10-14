@@ -1,0 +1,9 @@
+
+venv/
+.env/
+
+transcript_database.db
+
+experiments/
+contents/
+__pycache__/
