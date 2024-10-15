@@ -1,14 +1,9 @@
 # Native modules
-import os
-import re
-import time
-
 
 import database
 import sqlite3
 import channel_utils
 import transcript_utils
-import youtube_api
 
 
 # Function to save transcript to file
