@@ -43,8 +43,12 @@ def create_tables(conn):
 
 # Function to insert a video and its corresponding transcript
 # The transcript is first stored as a single text file
-def insert_transcript(conn, video_id, video_data):
+def insert_transcript(conn, video_data):
     cursor = conn.cursor()
+
+    
+
+
     sql_statement = '''
         INSERT INTO transcripts (youtube_video_id, title, description, channel_name, transcript) VALUES (?, ?, ?, ?, ?)
     '''
@@ -53,7 +57,7 @@ def insert_transcript(conn, video_id, video_data):
         cursor.execute('''
                 INSERT INTO transcripts (youtube_video_id, title, description, channel_name, transcript) VALUES (?, ?, ?, ?, ?)
         ''', (
-            video_id,
+            video_data["video_id"],
             video_data["title"],
             "description",
             video_data["channel_name"],

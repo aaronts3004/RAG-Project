@@ -6,6 +6,17 @@ import channel_utils
 import transcript_utils
 
 
+# Test timestamps
+def main():
+    cur_id = "uvFtyDy_Bt0"
+    video_data = transcript_utils.get_video_transcript(cur_id)
+
+    conn = database.connect_db()
+    database.insert_transcript(conn, video_data)
+
+    print(video_data["timestamps_array"])
+
+
 # Function to save transcript to file
 def save_transcript(transcript, filename):
     # Save the transcript string to a text file
@@ -27,12 +38,6 @@ def main_functionality():
         transcript = transcript_utils.get_video_transcript(video_id)
         filename = f"{video_id}_transcript.txt"
         save_transcript(transcript, filename)
-
-# Test timestamps
-def main():
-    cur_id = "uvFtyDy_Bt0"
-    video_data = transcript_utils.get_video_transcript(cur_id)
-    print(video_data["timestamps_array"])
 
 
 def test_database():

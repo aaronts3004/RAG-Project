@@ -1,10 +1,13 @@
 
-''' Module responsible for transcript processing and chunking of the transcript text
-    based on the single timestamps that were scraped from the youtube video'''
+''' 
+    Module responsible for transcript processing and chunking of the transcript text
+    based on the single timestamps that were scraped from the youtube video
+'''
 
 import re
 from youtube_transcript_api import YouTubeTranscriptApi
 import googleapiclient.errors
+import youtube_api
 
 # Convert a single timestamp (str) into time seconds format (int)
 def timestamp_to_seconds(timestamp_str):
@@ -24,18 +27,18 @@ def timestamp_to_seconds(timestamp_str):
     total_seconds = hours * 3600 + minutes * 60 + seconds
     return total_seconds
 
+
 '''
     Function to process the raw transcript from the YoutubeTranscriptApi
     The YoutubeTranscriptApi returns the transcript as a list of text chunks (stored as dicts)
     e.g. [
-        {'text': '- The following is a conversation\nwith Jordan Peterson,', 'start': 0.12, 'duration': 3.39}, 
-        {'text': 'his second time on this,\n"The Lex Fridman Podcast."', 'start': 3.51, 'duration': 3.867},
+        {'text': '- The following is a conversation\n with...,', 'start': 0.12, 'duration': 3.39}, 
+        {'text': 'his second time on this,\n" Podcast."', 'start': 3.51, 'duration': 3.867},
         ...
     ]
-    This can be useful, but the duration of the chunks is way too short
-    Therefore, chunks can be grouped together to match to a corresponding entry in timestamps table
+    This can be useful, but the duration of the chunks is way too short.
+    Therefore, chunks must be grouped together so that they match to a corresponding entry in timestamps table
 '''
-
 def process_transcript_chunks(chunk_list, timestamps_list):
     # Iterate over the list of timestamps, convert the 'timestamp' component of the dict 
     # add the representation of the timestamp in seconds to the dict
@@ -112,9 +115,10 @@ def process_transcript_chunks(chunk_list, timestamps_list):
     return grouped_transcripts
 
 
-def write_transcript_to_file(grouped_transcripts):
+# Write the timestamped chunks from the transcript to 'filename'
+def write_transcript_to_file(grouped_transcripts, filename):
     try:
-        with open("transcript_chunks", 'w', encoding='utf-8') as f:
+        with open(filename, 'w', encoding='utf-8') as f:
             for group in grouped_transcripts:
                 start_time = group['start_time']
                 text = group['text']
@@ -132,15 +136,15 @@ def write_transcript_to_file(grouped_transcripts):
     except Exception as e:
         print(f"Error writing to file: {e}")
         return
+    
 
-# Function to get the transcript for a video
+# Function to get the transcript for an input video ID
 def get_video_transcript(video_id):
-    print("--------------------------------------------")
-    # Use YouTubeTranscriptApi to fetch transcript
-    transcript_text = YouTubeTranscriptApi.get_transcript(video_id)
-    # print(transcript_text)
-    print("---------------------------------------------")
 
+    youtube = youtube_api.get_youtube_client()
+
+    # Use the YouTubeTranscriptApi to fetch transcript
+    transcript_text = YouTubeTranscriptApi.get_transcript(video_id)
     request = youtube.videos().list(
         part="snippet",
         id=video_id
@@ -148,43 +152,42 @@ def get_video_transcript(video_id):
 
     try: 
         response = request.execute()
-        snippet = response["items"][0]["snippet"]
+        snippet = response["items"][0]["snippet"]       # The 'snippet' will contain the relevant fields
         
         title = snippet.get("title", "Unknown Title")
         desc = snippet.get("description","Empty Description")
         channel_name = snippet.get("channelTitle", "Unknown Channel")
 
-
-
-        # Regular expression to capture timestamps (HH:MM:SS or MM:SS format)
+        # Regular expression to capture timestamps from the description (HH:MM:SS or MM:SS format)
         timestamp_pattern = r'\(?(\d{1,2}:\d{2}(?::\d{2})?)\)?\s+(.*)'
 
-        description=snippet["description"]
         # Use regex to find all matching timestamps and their descriptions
-        matches = re.findall(timestamp_pattern, description)
+        matches = re.findall(timestamp_pattern, desc)
 
         # Create a list to store parsed timestamps and their descriptions
         timestamps = []
 
-        # Loop through matches and store the timestamp and associated text
+        # Loop through matches and store the timestamp with the associated label
         for match in matches:
             timestamps.append({
                 "timestamp": match[0],
                 "text": match[1]
             })
         
-        print("**** Calling process_chunks ****")
         grouped_transcripts = process_transcript_chunks(transcript_text, timestamps)
-        write_transcript_to_file(grouped_transcripts)
-        print("******* exited process chunks ********")
+    
+        # write_transcript_to_file(grouped_transcripts, "test_file.txt")
         
+        # Write all the data to the database
         video_data = {
+            "video_id": video_id,
             "title": title,
             "description": desc,
-            "transcript": transcript_text,
             "channel_name": channel_name,
-            "timestamps_array": timestamps
+            "timestamps_array": timestamps,
+            "grouped_transcripts": grouped_transcripts
         }
+
         return video_data
 
     except googleapiclient.errors.HttpError as e:
