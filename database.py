@@ -15,90 +15,141 @@ def connect_db():
 # Table schema definition
 def create_tables(conn):
     sql_statements = [ 
-        """CREATE TABLE IF NOT EXISTS transcripts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            youtube_video_id TEXT,
+        """CREATE TABLE IF NOT EXISTS videos (
+            video_id TEXT PRIMARY KEY,
             title TEXT,
-            description TEXT,
-            channel_name TEXT,
-            transcript TEXT
+            channel TEXT,
+            description TEXT
         );""",
 
+        """CREATE TABLE IF NOT EXISTS transcripts (
+            video_id TEXT PRIMARY KEY,
+            video_title TEXT,
+            video_transcript TEXT,
+            FOREIGN KEY (video_id) REFERENCES videos(video_id)
+        );""",
+        
         """CREATE TABLE IF NOT EXISTS timestamps (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            episode_id INTEGER,
-            timestamp INTEGER,
-            text TEXT,
-            FOREIGN KEY (episode_id) REFERENCES episodes(id)
-        );"""]
+            video_id TEXT,
+            timestamp_Time TEXT,
+            timestamp_Label TEXT,
+            transcript_Chunk TEXT,
+            FOREIGN KEY (video_id) REFERENCES videos(video_id)
+        );"""
+        
+    ]
 
     # create a database connection
     try:
         cursor = conn.cursor()
+        count = 0
         for statement in sql_statements:
             cursor.execute(statement)
+            print(f"executed sql {count}")
+            count += 1
+            
         conn.commit()
     except sqlite3.Error as e:
         print(e)
 
-# Function to insert a video and its corresponding transcript
-# The transcript is first stored as a single text file
-def insert_transcript(conn, video_data):
+
+# Function to insert timestamps with the corresponding textual transcript chunks
+def insert_transcript_chunks(conn, video_id, grouped_transcripts_array):
     cursor = conn.cursor()
-
-    
-
 
     sql_statement = '''
-        INSERT INTO transcripts (youtube_video_id, title, description, channel_name, transcript) VALUES (?, ?, ?, ?, ?)
+        INSERT INTO timestamps (video_id, timestamp_Label, transcript_Chunk)
+        VALUES (?, ?, ?)
     '''
-    try: 
-        
-        cursor.execute('''
-                INSERT INTO transcripts (youtube_video_id, title, description, channel_name, transcript) VALUES (?, ?, ?, ?, ?)
-        ''', (
-            video_data["video_id"],
-            video_data["title"],
-            "description",
-            video_data["channel_name"],
-            "transcript"
-        ))
 
-        conn.commit()
-        return cursor.lastrowid
-    except sqlite3.IntegrityError as e:
-        print(f"Integrity Error (likely a duplicate youtube_video_id): {e}")
-    except sqlite3.Error as e:
-        print(f"SQL Error: {e}")
-    except KeyError as e:
-        print(f"KeyError: Missing field in video_data: {e}")
-    except Exception as e:
-        print(f"Unexpected Error: {e}")
+    for entry in grouped_transcripts_array:
+        cursor.execute(sql_statement, (video_id, entry["label"], entry["text"]))
 
-# Function to insert timestamps and their labels for a specific video
-# the input 'timestamps' is an array of dicts
-def insert_timestamps(conn, episode_id, timestamps):
-    cursor = conn.cursor()
-    
-    for entry in timestamps:
-        cursor.execute('''
-            INSERT INTO timestamps (episode_id, timestamp, text)
-            VALUES (?, ?, ?)
-        ''', (episode_id, entry["timestamp"], entry["text"]))
-    
     conn.commit()
+    print(f"Successfully inserted transcript chunks of video_ID: {video_id}")
+
+
+def insert_single_transcript(conn, video_id, video_title, video_transcript):
+    cursor = conn.cursor()
+
+    print("Trying to insert single transcript: ")
+    print(f"video_id:{video_id}")
+    print(f"video_title: {video_title}")
+    print(f"video_transcript: {video_transcript[:10]}")
+ 
+    sql_statement = '''
+        INSERT INTO transcripts (video_id, video_title, video_transcript)
+        VALUES (?, ?, ?)
+    '''
+
+    cursor.execute(sql_statement, (
+        video_id, video_title, video_transcript
+    ))
+
+    conn.commit()
+    print(f"Successfully inserted whole transcript of video_ID: {video_id}")
+
 
 #-----------------------------------------------------------------------------------#
 
-# Function to retrieve transcripts for a specific episode
-def get_transcripts(conn, youtube_video_id):
-    cursor = conn.cursor()
+# Save all data related to a video: metadata, timestamps, transcript chunks
+def insert_video_data(conn, video_data):
+    try: 
+        cursor = conn.cursor()
+        
+        # Insert video metadata into the videos table
+        sql_statement = '''
+            INSERT INTO videos (video_id, title, channel, description)
+            VALUES (?, ?, ?, ?)
+        '''
+        cursor.execute(sql_statement, (
+            video_data["video_id"],
+            video_data["title"],
+            video_data["channel_name"],
+            video_data["description"]
+        ))
 
+        conn.commit()
+        print(f"Successfully inserted video metadata for video_id: {video_data['video_id']}")
+
+        if (video_data["has_timestamps"]):
+            # Now insert the timestamps into the timestamps table
+            print(" - video has timestamps - try")
+            insert_transcript_chunks(conn, video_data["video_id"], video_data["grouped_transcripts"])
+            print(f"Successfully inserted timestamps data for video_id: {video_data['video_id']}")
+        
+        # Regardless of transcript presence, insert the entire transcript too
+        insert_single_transcript(conn, video_data["video_id"], video_data["title"], video_data["single_transcript"])
+        print(f"Successfully inserted single_transcript for video_id: {video_data['video_id']}")
+
+        # Now insert the transcript chunks
+        # insert_transcript_chunks(conn, video_data["video_id"], video_data["grouped_transcripts_array"])
+        print(f"Finished insertion for video_id: {video_data['video_id']}")
+
+    except sqlite3.Error as e:
+        print(f"Error inserting video data into database: {e}")
+    except Exception as e:
+        print(f"An unexpected error occurred while inserting data into the database: {e}")
+
+
+# Function to retrieve a single_transcript for a specific episode
+def get_single_transcript(conn, youtube_video_id):
+    cursor = conn.cursor()
     cursor.execute('''
-        SELECT transcripts.text
+        SELECT video_transcript
         FROM transcripts
-        JOIN episodes ON transcripts.episode_id = episodes.id
-        WHERE episodes.youtube_video_id = ?
+        WHERE video_id = ?          
+    ''', (youtube_video_id,))
+    
+    return cursor.fetchall()
+
+def get_chunked_transcripts(conn, youtube_video_id):
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT transcript_Chunk
+        FROM timestamps
+        WHERE video_id = ?          
     ''', (youtube_video_id,))
     
     return cursor.fetchall()

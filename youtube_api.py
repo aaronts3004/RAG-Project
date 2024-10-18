@@ -1,6 +1,7 @@
 
 ''' Central API initialization script'''
 import os
+from dotenv import load_dotenv
 
 # API modules
 # Google
@@ -8,7 +9,8 @@ from googleapiclient.discovery import build
 import googleapiclient.errors
 scopes = ["https://www.googleapis.com/auth/youtube.readonly"]
 
-DEVELOPER_KEY_1 = os.getenv('GOOGLE_API_KEY')
+load_dotenv()
+DEVELOPER_KEY_1 = os.getenv("GOOGLE_API_KEY")
 
 api_service_name = "youtube"
 api_version = "v3"
