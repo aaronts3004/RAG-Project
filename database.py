@@ -154,3 +154,4 @@ def get_chunked_transcripts(conn, youtube_video_id):
     
     return cursor.fetchall()
 
+

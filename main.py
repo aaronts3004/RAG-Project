@@ -1,6 +1,7 @@
 # Codebase modules
 import database
 import transcript_utils
+import channel_utils
 
 # Test timestamps
 def main():
@@ -8,22 +9,37 @@ def main():
     conn = database.connect_db()
     database.create_tables(conn)
 
-    # Dummy test data -> insert video_IDs
+    # List of new video_ids to be added to the collection
     test_video_ids = []
-    test_video_ids_2 = []
 
-    for test_id in test_video_ids_2:
+    # Prompt for a youtube video URL (the podcast that we want to get the transcripts from)
+    user_input = input("Please enter a Youtube URL to a video that you want to transcript or press ENTER to exit: ")
+    while (user_input != ""):
+    
+        # Get the ID of the related video from the URL through parsing
+        new_video_id = channel_utils.url_to_video_id(user_input)
+        if new_video_id == None:
+            print("No video_ID found - please try again")
+        else:
+            print(f"New video id is: {new_video_id}")
+            test_video_ids.append(new_video_id)
+
+        user_input = input("Please enter a Youtube URL to a video that you want to transcript or press ENTER to exit: ")
+
+
+    # Get the transcripts from the new videos and add them to the collection
+    for test_id in test_video_ids:
         video_data = transcript_utils.get_video_transcript(test_id)
-
-        # transcript_utils.write_transcript_to_file(video_data["grouped_transcripts"], "graham-hancock")
-
         database.insert_video_data(conn, video_data)
         print("*****************")
 
-
-    rows = database.get_chunked_transcripts(conn, "q8VePUwjB9Y")
+    print("--- Testing label insertion: ---")
+    cur = conn.cursor()
+    cur.execute("SELECT timestamp_label FROM timestamps")
+    rows = cur.fetchall()
     for row in rows:
-        print(row[:100])
+        print(row)
+
 
     '''
     print("---- \n\nTest results for correct insertion in database\n----")

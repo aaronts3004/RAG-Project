@@ -6,6 +6,7 @@
 import time
 import googleapiclient.errors
 from youtube_api import get_youtube_client  # Import the centralized YouTube API client
+import re
 
 
 # Function to get the channelID from a @handle
@@ -72,3 +73,31 @@ def get_channel_videos(channel_id):
 
     print(f"Total videos fetched: {len(video_ids)}")
     return video_ids
+
+def url_to_video_id(url_string):
+    match = re.search(r"v=([a-zA-Z0-9_-]{11})", url_string)
+    if match:
+        return match.group(1)
+    else:
+        return None
+
+
+'''
+# Retrieve the ID of the playlist that contains the 'podcast' uploads
+def get_podcasts_playlist_ID(channel_ID):
+    youtube = get_youtube_client()
+    
+    video_ids = set()
+
+    try: 
+        channel_response = youtube.playlists().list(
+            part='snippet',
+            channelId = channel_ID
+        ).execute()
+    except googleapiclient.errors.HttpError as e:
+        print("An error occurred while executing the API request:")
+        print(e)
+
+    print(channel_response['items'])
+'''
+
