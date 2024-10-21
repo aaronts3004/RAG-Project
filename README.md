@@ -1,5 +1,5 @@
 # RAG-Project
-Currently implementing a Retrieval Augmented Generation (RAG) System
+Currently implementing a Retrieval Augmented Generation (RAG) System.<br>
 A RAG can enhance the precision and relevance of the responses from a Large Language Model (LLM) 
 thanks to the embedding of a local context that the LLM is made aware of. 
 
