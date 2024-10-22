@@ -140,10 +140,17 @@ def write_transcript_to_file(grouped_transcripts, filename):
 def array_to_single_string(chunks_array):
     return " ".join([chunk['text'] for chunk in chunks_array])
     
+# Remove "\n" from the file string to improve chunking   
+def remove_new_lines(text):
+    return text.replace("\n", " ").strip()
+
+
+
 # Function to get the transcript for an input video ID
 def get_video_transcript(video_id):
     # Use the (unofficial) YouTubeTranscriptApi to fetch transcript
     transcript_text = YouTubeTranscriptApi.get_transcript(video_id)
+    transcript_text = remove_new_lines(transcript_text)
 
     # Use the Google Client API to get the transcript, but it will be returned in splits
     youtube = youtube_api.get_youtube_client()  # connect to Google Client API

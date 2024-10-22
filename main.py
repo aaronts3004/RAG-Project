@@ -3,9 +3,15 @@ import database
 import transcript_utils
 import channel_utils
 
+import chunking
+
 # Test timestamps
 def main():
 
+    s = "Apple is looking at buying U.K. startup for $1 billion"
+    chunking.naive_sentence_chunking(s)
+
+    ''' 
     conn = database.connect_db()
     database.create_tables(conn)
 
@@ -41,7 +47,7 @@ def main():
         print(row)
 
 
-    '''
+    
     print("---- \n\nTest results for correct insertion in database\n----")
     print("---- Test videos table ----")
     cur = conn.cursor()
